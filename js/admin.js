@@ -19,11 +19,9 @@ window.onload = () => {
     if (window.lucide) lucide.createIcons();
 };
 
-// LOGIN LOGIC
 window.attemptLogin = () => {
     const key = document.getElementById('adminKey').value;
     const SECRET_ACCESS_KEY = "HazzaleAdmin2026";
-    
     if (key === SECRET_ACCESS_KEY) {
         sessionStorage.setItem('admin_active', 'true');
         document.getElementById('loginOverlay').classList.add('hidden');
@@ -40,19 +38,12 @@ async function loadInventory() {
     list.innerHTML = `<div class="p-10 text-center animate-pulse text-blue-500 font-black uppercase tracking-widest">🔌 Connecting to Live DB...</div>`;
     
     try {
-        const { data: products, error } = await supabaseClient
-            .from('products')
-            .select('*')
-            .order('id', { ascending: false });
-
+        const { data: products, error } = await supabaseClient.from('products').select('*').order('id', { ascending: false });
         if (error) throw error;
         if (totalCountLabel) totalCountLabel.innerText = products.length;
 
         list.innerHTML = products.map(p => {
-            const displayImg = (p.images && Array.isArray(p.images) && p.images.length > 0) 
-                ? p.images[0] 
-                : 'https://via.placeholder.com/150?text=No+Image';
-
+            const displayImg = (p.images && Array.isArray(p.images) && p.images.length > 0) ? p.images[0] : 'https://via.placeholder.com/150?text=No+Image';
             return `
                 <div class="bg-slate-900 p-5 rounded-[1.5rem] border border-slate-700 hover:border-blue-500 transition-all shadow-lg">
                     <div class="flex items-start justify-between mb-3">
@@ -75,8 +66,7 @@ async function loadInventory() {
                         <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter italic">DB_REF: ${p.id}</span>
                         <span class="text-[9px] ${p.in_stock ? 'text-green-500' : 'text-red-500'} font-black italic uppercase tracking-widest">${p.in_stock ? '● Live' : '○ Sold Out'}</span>
                     </div>
-                </div>
-            `;
+                </div>`;
         }).join('');
         lucide.createIcons();
     } catch (e) { 
@@ -84,37 +74,11 @@ async function loadInventory() {
     }
 }
 
-// 5. EDIT HANDLER
-window.editProduct = async (id) => {
-    const { data: p, error } = await supabaseClient.from('products').select('*').eq('id', id).single();
-    if (error || !p) return;
-
-    document.getElementById('editId').value = p.id;
-    document.getElementById('pName').value = p.name;
-    document.getElementById('pPrice').value = p.price;
-    document.getElementById('pCat').value = p.category;
-    document.getElementById('pStock').value = p.in_stock.toString();
-    document.getElementById('pDetails').value = p.details;
-    
-    document.getElementById('formTitle').innerText = "Update Item";
-    document.getElementById('editBadge').classList.remove('hidden');
-    document.getElementById('cancelEdit').classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-// 6. DELETE HANDLER
-window.deleteProduct = async (id) => {
-    if (!confirm("Delete permanently?")) return;
-    const { error } = await supabaseClient.from('products').delete().eq('id', id);
-    if (!error) loadInventory();
-};
-
-// 7. FORM SUBMISSION (FIXED FOR ID CONFLICTS & IMAGES)
+// 5. FORM SUBMISSION (MULTI-IMAGE & SYNC)
 document.getElementById('adminForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     const editId = document.getElementById('editId').value;
-    
     btn.disabled = true; 
     btn.innerHTML = `<span class="animate-pulse italic">PROCESSING...</span>`;
 
@@ -122,20 +86,19 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
         let imageUrls = [];
         const files = document.getElementById('pFiles').files;
 
-        // Image Upload Logic
         if (files.length > 0) {
-            btn.innerHTML = `<span class="animate-pulse italic">UPLOADING IMAGES...</span>`;
-            for (let file of files) {
+            btn.innerHTML = `<span class="animate-pulse italic">UPLOADING ${files.length} IMAGES...</span>`;
+            const uploadPromises = Array.from(files).map(async (file) => {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('upload_preset', UPLOAD_PRESET);
                 const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: formData });
                 const cloudData = await cloudRes.json();
-                if (cloudData.secure_url) imageUrls.push(cloudData.secure_url);
-            }
+                return cloudData.secure_url;
+            });
+            imageUrls = await Promise.all(uploadPromises); // Ensures all images save
         }
 
-        // Smart Image Preservation
         let finalImages = imageUrls;
         if (editId && imageUrls.length === 0) {
             const { data: existing } = await supabaseClient.from('products').select('images').eq('id', editId).single();
@@ -153,25 +116,16 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
 
         let dbResponse;
         if (editId) {
-            // FIX: Explicitly UPDATE to avoid identity column error
-            dbResponse = await supabaseClient
-                .from('products')
-                .update(productData)
-                .eq('id', editId);
+            dbResponse = await supabaseClient.from('products').update(productData).eq('id', editId);
         } else {
-            // FIX: Standard INSERT (let DB handle the ID)
-            dbResponse = await supabaseClient
-                .from('products')
-                .insert([productData]);
+            dbResponse = await supabaseClient.from('products').insert([productData]);
         }
 
         if (!dbResponse.error) {
             btn.classList.replace('bg-blue-600', 'bg-green-600');
-            btn.innerText = "✅ SUCCESS! REFRESHING...";
+            btn.innerText = "✅ SYNCED TO DATABASE";
             setTimeout(() => location.reload(), 1000);
-        } else {
-            throw dbResponse.error;
-        }
+        } else { throw dbResponse.error; }
     } catch (err) { 
         alert("Error: " + err.message);
         btn.disabled = false;
@@ -179,6 +133,27 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
     }
 });
 
-// 8. HELPERS
+// HELPERS
+window.editProduct = async (id) => {
+    const { data: p, error } = await supabaseClient.from('products').select('*').eq('id', id).single();
+    if (error || !p) return;
+    document.getElementById('editId').value = p.id;
+    document.getElementById('pName').value = p.name;
+    document.getElementById('pPrice').value = p.price;
+    document.getElementById('pCat').value = p.category;
+    document.getElementById('pStock').value = p.in_stock.toString();
+    document.getElementById('pDetails').value = p.details;
+    document.getElementById('formTitle').innerText = "Update Item";
+    document.getElementById('editBadge').classList.remove('hidden');
+    document.getElementById('cancelEdit').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.deleteProduct = async (id) => {
+    if (!confirm("Delete permanently?")) return;
+    const { error } = await supabaseClient.from('products').delete().eq('id', id);
+    if (!error) loadInventory();
+};
+
 window.logout = () => { sessionStorage.removeItem('admin_active'); location.reload(); };
 document.getElementById('cancelEdit').onclick = () => location.reload();
