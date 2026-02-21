@@ -6,7 +6,31 @@
     <title>HazzaleBlue Admin | Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <style>.no-scrollbar::-webkit-scrollbar { display: none; }</style>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* Fix for the dropdown visibility */
+        select option {
+            background-color: #0f172a !important; /* Dark slate */
+            color: white !important;
+        }
+
+        /* Form Interaction Glows */
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6 !important;
+            background-color: #020617 !important;
+        }
+
+        /* Custom Scrollbar for Inventory */
+        #inventoryList::-webkit-scrollbar {
+            width: 4px;
+        }
+        #inventoryList::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-white p-6 antialiased">
     <div id="loginOverlay" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-6">
@@ -29,7 +53,7 @@
         
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
             <section>
-                <form id="adminForm" class="space-y-4 bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 relative">
+                <form id="adminForm" class="space-y-4 bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 relative shadow-2xl">
                     <div id="editBadge" class="hidden absolute -top-4 -right-4 bg-yellow-500 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase italic">Editing Mode</div>
                     <h3 id="formTitle" class="font-bold text-lg mb-6 italic uppercase">Add New Item</h3>
                     <input type="hidden" id="editId">
@@ -55,12 +79,29 @@
                         <button type="button" id="cancelEdit" class="hidden bg-slate-700 px-6 py-4 rounded-xl font-black text-xs uppercase">Cancel</button>
                     </div>
                 </form>
+
+                <div class="mt-8 grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-sm">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Total Items</p>
+                        <div class="flex items-baseline space-x-2">
+                            <span id="totalCount" class="text-4xl font-black italic text-blue-500">0</span>
+                            <span class="text-[10px] font-bold text-slate-500">/ 5,000</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-sm">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Cloud Status</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                            <span class="text-lg font-black italic">ACTIVE</span>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <section class="bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 flex flex-col h-[750px]">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-lg italic uppercase">Inventory</h3>
-                    <button id="refreshBtn" class="text-blue-400 hover:text-white transition"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+                    <button id="refreshBtn" onclick="loadInventory()" class="text-blue-400 hover:text-white transition"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
                 </div>
                 <div id="inventoryList" class="space-y-4 overflow-y-auto pr-2 no-scrollbar"></div>
             </section>
