@@ -8,9 +8,18 @@ const App = () => {
 
     useEffect(() => {
         fetch('data/products.json?v=' + Date.now())
-            .then(res => res.json())
-            .then(data => setProducts(data))
-            .catch(err => console.error("Error:", err));
+            .then(res => {
+                if (!res.ok) throw new Error("File not found");
+                return res.json();
+            })
+            .then(data => {
+                // Ensure data is always an array so .filter() doesn't crash
+                setProducts(Array.isArray(data) ? data : []);
+            })
+            .catch(err => {
+                console.error("Critical Error:", err);
+                setProducts([]); // Fallback to empty list instead of crashing
+            });
     }, []);
 
     useEffect(() => { if (window.lucide) lucide.createIcons(); }, [products, viewingProduct]);
