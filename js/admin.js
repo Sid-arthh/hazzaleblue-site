@@ -49,7 +49,6 @@ async function loadInventory() {
         if (totalCountLabel) totalCountLabel.innerText = products.length;
 
         list.innerHTML = products.map(p => {
-            // Ensure we handle image array correctly for display
             const displayImg = (p.images && Array.isArray(p.images) && p.images.length > 0) 
                 ? p.images[0] 
                 : 'https://via.placeholder.com/150?text=No+Image';
@@ -149,7 +148,7 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
             category: document.getElementById('pCat').value,
             in_stock: document.getElementById('pStock').value === "true",
             details: document.getElementById('pDetails').value,
-            images: finalImages // This is passed as a JS array
+            images: finalImages
         };
 
         let dbResponse;
