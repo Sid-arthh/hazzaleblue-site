@@ -4,11 +4,9 @@ const SUPABASE_KEY = 'sb_publishable_t5Dro1BgG8sMUpQyMWiE0Q_BxjDTBrn';
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 2. CLOUDINARY CONFIGURATION
 const CLOUD_NAME = "dcdh5wh8m"; 
 const UPLOAD_PRESET = "HAZZALEBLUE";
 
-// 3. ACCESS CONTROL
 const getAdminAuth = () => sessionStorage.getItem('admin_active');
 
 window.onload = () => {
@@ -21,8 +19,7 @@ window.onload = () => {
 
 window.attemptLogin = () => {
     const key = document.getElementById('adminKey').value;
-    const SECRET_ACCESS_KEY = "HazzaleAdmin2026";
-    if (key === SECRET_ACCESS_KEY) {
+    if (key === "HazzaleAdmin2026") {
         sessionStorage.setItem('admin_active', 'true');
         document.getElementById('loginOverlay').classList.add('hidden');
         loadInventory();
@@ -31,19 +28,16 @@ window.attemptLogin = () => {
     }
 };
 
-// 4. LOAD INVENTORY
 async function loadInventory() {
     const list = document.getElementById('inventoryList');
-    const totalCountLabel = document.getElementById('totalCount');
-    list.innerHTML = `<div class="p-10 text-center animate-pulse text-blue-500 font-black uppercase tracking-widest">🔌 Connecting to Live DB...</div>`;
+    list.innerHTML = `<div class="p-10 text-center animate-pulse text-blue-500 font-black uppercase tracking-widest text-[10px]">Connecting to Live DB...</div>`;
     
     try {
         const { data: products, error } = await supabaseClient.from('products').select('*').order('id', { ascending: false });
         if (error) throw error;
-        if (totalCountLabel) totalCountLabel.innerText = products.length;
 
         list.innerHTML = products.map(p => {
-            const displayImg = (p.images && Array.isArray(p.images) && p.images.length > 0) ? p.images[0] : 'https://via.placeholder.com/150?text=No+Image';
+            const displayImg = (p.images && p.images[0]) ? p.images[0] : 'https://via.placeholder.com/150?text=No+Image';
             return `
                 <div class="bg-slate-900 p-5 rounded-[1.5rem] border border-slate-700 hover:border-blue-500 transition-all shadow-lg">
                     <div class="flex items-start justify-between mb-3">
@@ -62,19 +56,12 @@ async function loadInventory() {
                             <button onclick="deleteProduct(${p.id})" class="bg-slate-800 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </div>
                     </div>
-                    <div class="flex items-center justify-between pt-3 border-t border-slate-800">
-                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter italic">DB_REF: ${p.id}</span>
-                        <span class="text-[9px] ${p.in_stock ? 'text-green-500' : 'text-red-500'} font-black italic uppercase tracking-widest">${p.in_stock ? '● Live' : '○ Sold Out'}</span>
-                    </div>
                 </div>`;
         }).join('');
         lucide.createIcons();
-    } catch (e) { 
-        list.innerHTML = `<div class="p-10 text-center text-red-500 font-black uppercase italic">Database Connection Error</div>`; 
-    }
+    } catch (e) { list.innerHTML = `<div class="p-10 text-center text-red-500 font-black uppercase italic">DB Error</div>`; }
 }
 
-// 5. FORM SUBMISSION (MULTI-IMAGE & SYNC)
 document.getElementById('adminForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
@@ -107,7 +94,7 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
 
         const productData = {
             name: document.getElementById('pName').value,
-            price: document.getElementById('pPrice').value,
+            price: document.getElementById('pName').value.includes('₹') ? document.getElementById('pPrice').value : `₹${document.getElementById('pPrice').value}`,
             category: document.getElementById('pCat').value,
             in_stock: document.getElementById('pStock').value === "true",
             details: document.getElementById('pDetails').value,
@@ -123,37 +110,29 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
 
         if (!dbResponse.error) {
             btn.classList.replace('bg-blue-600', 'bg-green-600');
-            btn.innerText = "✅ SYNCED TO DATABASE";
+            btn.innerText = "✅ SYNCED";
             setTimeout(() => location.reload(), 1000);
         } else { throw dbResponse.error; }
-    } catch (err) { 
-        alert("Error: " + err.message);
-        btn.disabled = false;
-        btn.innerText = "RETRY SUBMISSION";
-    }
+    } catch (err) { alert("Error: " + err.message); btn.disabled = false; btn.innerText = "RETRY"; }
 });
 
-// HELPERS
 window.editProduct = async (id) => {
     const { data: p, error } = await supabaseClient.from('products').select('*').eq('id', id).single();
     if (error || !p) return;
     document.getElementById('editId').value = p.id;
     document.getElementById('pName').value = p.name;
-    document.getElementById('pPrice').value = p.price;
+    document.getElementById('pPrice').value = p.price.replace('₹', '');
     document.getElementById('pCat').value = p.category;
     document.getElementById('pStock').value = p.in_stock.toString();
     document.getElementById('pDetails').value = p.details;
     document.getElementById('formTitle').innerText = "Update Item";
-    document.getElementById('editBadge').classList.remove('hidden');
-    document.getElementById('cancelEdit').classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.deleteProduct = async (id) => {
     if (!confirm("Delete permanently?")) return;
-    const { error } = await supabaseClient.from('products').delete().eq('id', id);
-    if (!error) loadInventory();
+    await supabaseClient.from('products').delete().eq('id', id);
+    loadInventory();
 };
 
 window.logout = () => { sessionStorage.removeItem('admin_active'); location.reload(); };
-document.getElementById('cancelEdit').onclick = () => location.reload();
