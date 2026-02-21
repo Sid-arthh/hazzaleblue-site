@@ -60,40 +60,47 @@ async function updateGitHub(newContent, message, token) {
 }
 
 // LOAD INVENTORY WITH CACHE BUSTING
+// Replace your loadInventory in js/admin.js
 async function loadInventory() {
     const list = document.getElementById('inventoryList');
     const totalCountLabel = document.getElementById('totalCount');
-    list.innerHTML = `<div class="p-10 text-center animate-pulse text-blue-500 font-black uppercase">Refreshing...</div>`;
+    list.innerHTML = `<div class="p-10 text-center animate-pulse text-blue-500 font-black uppercase">SYNCING DATABASE...</div>`;
     
     try {
-        // Adding unique timestamp forces the browser to fetch the absolute latest version from GitHub
-        const res = await fetch(`data/products.json?v=${Date.now()}`);
+        // Use a high-resolution timestamp to bypass GitHub's cache
+        const res = await fetch(`data/products.json?v=${new Date().getTime()}`);
         const products = await res.json();
         
-        // Update the "Total Items" count in the Store Overview
         if (totalCountLabel) totalCountLabel.innerText = products.length;
 
         list.innerHTML = products.map(p => `
-            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 flex items-center justify-between group hover:border-blue-500 transition-all">
-                <div class="flex items-center space-x-4">
-                    <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/150?text=No+Image'}" 
-                         class="w-12 h-12 object-contain bg-white rounded-lg shadow-inner">
-                    <div class="overflow-hidden">
-                        <p class="text-[10px] font-black italic uppercase truncate w-32 text-white">${p.name}</p>
-                        <p class="text-[9px] ${p.inStock ? 'text-green-500' : 'text-red-500'} font-black tracking-tighter">
-                            ${p.inStock ? '● ONLINE' : '○ OUT OF STOCK'}
-                        </p>
+            <div class="bg-slate-900 p-5 rounded-[1.5rem] border border-slate-700 hover:border-blue-500 transition-all shadow-lg">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex gap-4">
+                        <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden">
+                            <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/150?text=Wait'}" 
+                                 class="w-full h-full object-contain">
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest">${p.category}</p>
+                            <h4 class="text-sm font-black italic uppercase text-white leading-tight mb-1">${p.name}</h4>
+                            <p class="text-lg font-black text-white">${p.price}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="editProduct(${p.id})" class="bg-slate-800 p-2 rounded-lg text-blue-400 hover:bg-blue-500 hover:text-white transition"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        <button onclick="deleteProduct(${p.id})" class="bg-slate-800 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
                 </div>
-                <div class="flex space-x-1">
-                    <button onclick="editProduct(${p.id})" class="text-blue-400 p-2 hover:bg-blue-500/20 rounded-xl transition"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                    <button onclick="deleteProduct(${p.id})" class="text-red-500 p-2 hover:bg-red-500/20 rounded-xl transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+                    <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">ID: ${p.id}</span>
+                    <span class="text-[9px] ${p.inStock ? 'text-green-500' : 'text-red-500'} font-black italic uppercase">${p.inStock ? '● Active' : '○ Sold Out'}</span>
                 </div>
             </div>
         `).reverse().join('');
         lucide.createIcons();
     } catch (e) { 
-        list.innerHTML = `<div class="p-10 text-center text-slate-600 uppercase font-black">No Data Found</div>`; 
+        list.innerHTML = `<div class="p-10 text-center text-slate-600 font-black uppercase">Data Pending Sync...</div>`; 
     }
 }
 
