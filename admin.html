@@ -6,104 +6,99 @@
     <title>HazzaleBlue Admin | Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
-
-        /* Fix for the dropdown visibility */
-        select option {
-            background-color: #0f172a !important; /* Dark slate */
-            color: white !important;
+        select option { background-color: #0f172a !important; color: white !important; }
+        input:focus, select:focus, textarea:focus { 
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); 
+            border-color: #3b82f6 !important; 
+            background-color: #020617 !important; 
         }
-
-        /* Form Interaction Glows */
-        input:focus, select:focus, textarea:focus {
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
-            border-color: #3b82f6 !important;
-            background-color: #020617 !important;
-        }
-
-        /* Custom Scrollbar for Inventory */
-        #inventoryList::-webkit-scrollbar {
-            width: 4px;
-        }
-        #inventoryList::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 10px;
-        }
+        #inventoryList::-webkit-scrollbar { width: 4px; }
+        #inventoryList::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-slate-900 text-white p-6 antialiased">
+<body class="bg-slate-900 text-white p-6 antialiased font-sans">
     <div id="loginOverlay" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-6">
-        <div class="max-w-md w-full bg-slate-800 p-10 rounded-[2.5rem] border border-slate-700 shadow-2xl">
-            <h2 class="text-2xl font-black italic text-blue-500 mb-2 uppercase text-center">HazzaleBlue</h2>
-            <p class="text-[10px] text-slate-500 text-center uppercase tracking-[0.3em] mb-8 font-bold">Admin Access Only</p>
+        <div class="max-w-md w-full bg-slate-800 p-10 rounded-[2.5rem] border border-slate-700 shadow-2xl text-center">
+            <h2 class="text-2xl font-black italic text-blue-500 mb-2 uppercase">HazzaleBlue</h2>
+            <p class="text-[10px] text-slate-500 uppercase tracking-[0.3em] mb-8 font-bold">Admin Access Only</p>
             <div class="space-y-4">
                 <input type="password" id="adminKey" placeholder="Enter Secret Access Key" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 outline-none focus:border-blue-500 transition-all text-sm">
-                <button onclick="attemptLogin()" id="loginBtn" class="w-full bg-blue-600 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-500 transition-all flex justify-center items-center">Unlock Dashboard</button>
+                <button onclick="attemptLogin()" id="loginBtn" class="w-full bg-blue-600 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-500 transition-all">Unlock Dashboard</button>
             </div>
-            <p id="loginError" class="text-red-500 text-xs mt-4 text-center hidden font-bold italic uppercase">Invalid Key: Access Denied</p>
+            <p id="loginError" class="text-red-500 text-xs mt-4 hidden font-bold italic uppercase">Invalid Key</p>
         </div>
     </div>
 
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-10">
-            <h1 class="text-3xl font-black italic uppercase text-blue-500">Admin Control</h1>
+            <h1 class="text-3xl font-black italic uppercase text-blue-500 tracking-tighter">Admin Control</h1>
             <button onclick="logout()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-[0.2em]">Logout</button>
         </header>
         
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
             <section>
                 <form id="adminForm" class="space-y-4 bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 relative shadow-2xl">
-                    <div id="editBadge" class="hidden absolute -top-4 -right-4 bg-yellow-500 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase italic">Editing Mode</div>
-                    <h3 id="formTitle" class="font-bold text-lg mb-6 italic uppercase">Add New Item</h3>
+                    <div id="editBadge" class="hidden absolute -top-4 -right-4 bg-yellow-500 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase italic shadow-lg">Editing Mode</div>
+                    <h3 id="formTitle" class="font-black text-lg mb-6 italic uppercase tracking-tighter">Add New Item</h3>
                     <input type="hidden" id="editId">
-                    <input type="text" id="pName" placeholder="Product Name" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    
+                    <input type="text" id="pName" placeholder="Product Name" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm outline-none focus:border-blue-500">
+                    
                     <div class="grid grid-cols-2 gap-4">
-                        <input type="text" id="pPrice" placeholder="Price (₹)" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm outline-none">
-                        <select id="pCat" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm font-bold text-blue-400 outline-none">
+                        <input type="text" id="pPrice" placeholder="Price (₹)" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm outline-none">
+                        <select id="pCat" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm font-bold text-blue-400 outline-none">
                             <option>Cameras</option><option>Tabs</option><option>Hardrives</option><option>CCTV</option>
                         </select>
                     </div>
-                    <div class="flex items-center justify-between bg-slate-900 border border-slate-700 p-3 rounded-xl">
-                        <span class="text-[10px] font-black text-slate-500 uppercase">Stock Status</span>
-                        <select id="pStock" class="bg-transparent text-sm font-black focus:outline-none">
+
+                    <div class="flex items-center justify-between bg-slate-900 border border-slate-700 p-4 rounded-xl">
+                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Stock Status</span>
+                        <select id="pStock" class="bg-transparent text-sm font-black focus:outline-none cursor-pointer">
                             <option value="true">IN STOCK</option>
                             <option value="false">OUT OF STOCK</option>
                         </select>
                     </div>
-                    <label class="block text-[10px] font-black text-slate-500 mb-1 uppercase">Images (Max 3)</label>
-                    <input type="file" id="pFiles" multiple accept="image/*" class="w-full text-xs text-slate-400 file:bg-blue-600 file:text-white file:rounded-full file:px-4 file:py-2 file:border-0 cursor-pointer">
-                    <textarea id="pDetails" placeholder="Product Specifications..." rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm outline-none"></textarea>
+
+                    <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl">
+                        <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">Upload Images</label>
+                        <input type="file" id="pFiles" multiple accept="image/*" class="w-full text-xs text-slate-400 file:bg-blue-600 file:text-white file:rounded-full file:px-4 file:py-2 file:border-0 cursor-pointer">
+                    </div>
+
+                    <textarea id="pDetails" placeholder="Product Specifications..." rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm outline-none"></textarea>
+                    
                     <div class="flex gap-2 pt-4">
-                        <button type="submit" id="submitBtn" class="flex-grow bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-xl">Submit Changes</button>
-                        <button type="button" id="cancelEdit" class="hidden bg-slate-700 px-6 py-4 rounded-xl font-black text-xs uppercase">Cancel</button>
+                        <button type="submit" id="submitBtn" class="flex-grow bg-blue-600 hover:bg-blue-500 py-5 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-blue-600/20">Submit Changes</button>
+                        <button type="button" id="cancelEdit" class="hidden bg-slate-700 px-6 py-5 rounded-xl font-black text-xs uppercase hover:bg-slate-600">Cancel</button>
                     </div>
                 </form>
 
                 <div class="mt-8 grid grid-cols-2 gap-4">
-                    <div class="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-sm">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Total Items</p>
+                    <div class="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-sm shadow-xl">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">DB Inventory</p>
                         <div class="flex items-baseline space-x-2">
-                            <span id="totalCount" class="text-4xl font-black italic text-blue-500">0</span>
-                            <span class="text-[10px] font-bold text-slate-500">/ 5,000</span>
+                            <span id="totalCount" class="text-4xl font-black italic text-blue-500 animate-pulse">0</span>
+                            <span class="text-[10px] font-bold text-slate-500 italic">SKUs</span>
                         </div>
                     </div>
-                    <div class="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-sm">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Cloud Status</p>
-                        <div class="flex items-center space-x-2">
-                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            <span class="text-lg font-black italic">ACTIVE</span>
+                    <div class="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-sm shadow-xl">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">DB Link Status</p>
+                        <div class="flex items-center space-x-2 text-green-500">
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-ping"></span>
+                            <span class="text-lg font-black italic uppercase tracking-tighter">Connected</span>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 flex flex-col h-[750px]">
+            <section class="bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 flex flex-col h-[750px] shadow-2xl">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-lg italic uppercase">Inventory</h3>
-                    <button id="refreshBtn" onclick="loadInventory()" class="text-blue-400 hover:text-white transition"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+                    <h3 class="font-black text-lg italic uppercase tracking-tighter">Live Inventory</h3>
+                    <button onclick="loadInventory()" class="bg-slate-900 p-3 rounded-xl text-blue-400 hover:text-white transition shadow-lg border border-slate-700"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
                 </div>
-                <div id="inventoryList" class="space-y-4 overflow-y-auto pr-2 no-scrollbar"></div>
+                <div id="inventoryList" class="space-y-4 overflow-y-auto pr-2 no-scrollbar scroll-smooth"></div>
             </section>
         </div>
     </div>
