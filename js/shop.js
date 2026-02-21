@@ -4,7 +4,7 @@ const App = () => {
     const [products, setProducts] = useState([]);
     const [activeCategory, setActiveCategory] = useState('All');
     const [viewingProduct, setViewingProduct] = useState(null);
-    const whatsappNumber = "9199171xxxxx"; // Replace with your number
+    const whatsappNumber = "9199171xxxxx"; // Replace with client number
 
     useEffect(() => {
         fetch('data/products.json?v=' + Date.now())
@@ -13,12 +13,12 @@ const App = () => {
                 return res.json();
             })
             .then(data => {
-                // Ensure data is always an array so .filter() doesn't crash
+                // SAFETY CHECK: Ensure data is an array
                 setProducts(Array.isArray(data) ? data : []);
             })
             .catch(err => {
                 console.error("Critical Error:", err);
-                setProducts([]); // Fallback to empty list instead of crashing
+                setProducts([]); 
             });
     }, []);
 
@@ -30,11 +30,14 @@ const App = () => {
     };
 
     const categories = ['All', 'Cameras', 'Tabs', 'Hardrives', 'CCTV'];
-    const filtered = products.filter(p => activeCategory === 'All' || p.category === activeCategory);
+    
+    // SAFETY CHECK: Handle undefined products during filtering
+    const filtered = products.filter(p => 
+        p && (activeCategory === 'All' || p.category === activeCategory)
+    );
 
     return (
         <div className="min-h-screen p-6">
-            {/* Header / Navigation */}
             <nav className="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-center gap-6">
                 <h1 className="text-3xl font-black italic tracking-tighter text-blue-500 uppercase">HAZZALE BLUE</h1>
                 <div className="flex flex-wrap justify-center gap-3">
@@ -58,15 +61,19 @@ const App = () => {
                         </button>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-slate-800/50 p-8 rounded-[3rem] border border-slate-700">
                             <div className="bg-white rounded-[2rem] p-8 flex items-center justify-center">
-                                <img src={viewingProduct.images[0]} className="max-h-[500px] w-auto object-contain" />
+                                {/* SAFETY CHECK: Handle missing viewingProduct image */}
+                                <img 
+                                    src={viewingProduct.images && viewingProduct.images[0] ? viewingProduct.images[0] : 'https://via.placeholder.com/600x400?text=No+Image'} 
+                                    className="max-h-[500px] w-auto object-contain" 
+                                />
                             </div>
                             <div className="flex flex-col justify-center space-y-6">
-                                <h2 className="text-5xl font-black italic uppercase leading-none">{viewingProduct.name}</h2>
+                                <h2 className="text-5xl font-black italic uppercase leading-none">{viewingProduct.name || "Unnamed Product"}</h2>
                                 <div className="flex items-center gap-4">
-                                    <p className="text-4xl font-black text-blue-500">{viewingProduct.price}</p>
+                                    <p className="text-4xl font-black text-blue-500">{viewingProduct.price || "N/A"}</p>
                                     {!viewingProduct.inStock && <span className="bg-red-600 px-4 py-1 rounded-full text-[10px] font-black italic uppercase">Sold Out</span>}
                                 </div>
-                                <p className="text-slate-400 leading-relaxed text-lg">{viewingProduct.details}</p>
+                                <p className="text-slate-400 leading-relaxed text-lg">{viewingProduct.details || "No description available."}</p>
                                 <button 
                                     disabled={!viewingProduct.inStock} 
                                     onClick={() => handleWhatsApp(viewingProduct)} 
@@ -82,13 +89,17 @@ const App = () => {
                         {filtered.length > 0 ? filtered.map(p => (
                             <div key={p.id} onClick={() => setViewingProduct(p)} className="group bg-slate-800/40 rounded-[2.5rem] border border-slate-700/50 p-6 cursor-pointer hover:border-blue-500/50 transition-all">
                                 <div className="aspect-square bg-white rounded-3xl mb-6 p-6 overflow-hidden relative flex items-center justify-center">
-                                    <img src={p.images[0]} className="max-h-full w-auto object-contain group-hover:scale-110 transition duration-700" />
-                                    {!p.inStock && <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center font-black text-white italic text-xs uppercase tracking-widest">Out of Stock</div>}
+                                    {/* SAFETY CHECK: Handle missing list image */}
+                                    <img 
+                                        src={p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/300?text=No+Image'} 
+                                        className="max-h-full w-auto object-contain group-hover:scale-110 transition duration-700" 
+                                    />
+                                    {!p.inStock && <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center font-black text-white italic text-xs uppercase tracking-widest text-center">Out of Stock</div>}
                                 </div>
                                 <div className="px-2">
-                                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">{p.category}</p>
-                                    <h4 className="text-xl font-black italic mb-2 uppercase truncate">{p.name}</h4>
-                                    <p className="text-2xl font-black text-white">{p.price}</p>
+                                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">{p.category || "General"}</p>
+                                    <h4 className="text-xl font-black italic mb-2 uppercase truncate">{p.name || "Untitled Item"}</h4>
+                                    <p className="text-2xl font-black text-white">{p.price || "N/A"}</p>
                                 </div>
                             </div>
                         )) : (
