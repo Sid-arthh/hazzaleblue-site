@@ -9,12 +9,12 @@ const App = () => {
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortBy, setSortBy] = useState('newest'); // Step 3 logic
+    const [sortBy, setSortBy] = useState('newest');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [viewingProduct, setViewingProduct] = useState(null);
     const [mainImage, setMainImage] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10; // Pagination Step
+    const itemsPerPage = 10;
     const whatsappNumber = "918800776882";
 
     useEffect(() => {
@@ -93,45 +93,30 @@ const App = () => {
 
             <main className="max-w-7xl mx-auto px-6 py-12">
                 {!viewingProduct && (
-                    <div className="flex flex-col lg:flex-row gap-8">
-                        {/* PRODUCT FEED */}
-                        <div className="flex-grow order-2 lg:order-1">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-                                {currentItems.map(p => (
-                                    <div key={p.id} onClick={() => {setViewingProduct(p); setMainImage(p.images[0]);}} className="group bg-slate-900/40 rounded-[2.5rem] border border-slate-800/50 p-6 cursor-pointer hover:border-blue-600 transition-all shadow-xl">
-                                        <div className="aspect-square bg-white rounded-3xl mb-8 p-8 flex items-center justify-center overflow-hidden relative shadow-inner">
-                                            <img src={p.images[0] || ''} className="max-h-full w-auto object-contain group-hover:scale-110 transition duration-700" />
-                                            {!p.in_stock && <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center font-black text-white italic text-[10px] uppercase tracking-[0.4em] backdrop-blur-sm">Sold Out</div>}
-                                        </div>
-                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">{p.category}</p>
-                                        <h4 className="text-xl font-black italic mb-3 uppercase truncate group-hover:text-blue-400 transition-colors">{p.name}</h4>
-                                        <p className="text-3xl font-black text-white">{p.price}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            
-                            {/* PAGINATION BUTTONS */}
-                            {totalPages > 1 && (
-                                <div className="flex justify-center gap-4 mt-20">
-                                    <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="p-4 bg-slate-900 rounded-2xl border border-slate-800 disabled:opacity-20"><i data-lucide="chevron-left"></i></button>
-                                    <span className="flex items-center font-black italic uppercase text-[10px] tracking-widest text-slate-500">Page {currentPage} of {totalPages}</span>
-                                    <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="p-4 bg-slate-900 rounded-2xl border border-slate-800 disabled:opacity-20"><i data-lucide="chevron-right"></i></button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* RIGHT SIDEBAR */}
-                        <aside className="w-full lg:w-64 order-1 lg:order-2 space-y-8">
-                            <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[2rem] sticky top-32">
+                    <div className="flex flex-col lg:flex-row gap-10">
+                        
+                        {/* LEFT SIDEBAR (Moved to the left & styled for perfect placement) */}
+                        <aside className="w-full lg:w-72 shrink-0 order-1 space-y-8">
+                            <div className="bg-slate-900/50 border border-slate-800 p-6 lg:p-8 rounded-[2rem] sticky top-32 shadow-xl">
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500 mb-6">Categories</h3>
-                                <div className="flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:max-h-[400px] no-scrollbar mb-8">
+                                
+                                {/* Mobile Scroll Fix: Added pb-3 for scrollbar spacing and gap-3 */}
+                                <div className="flex flex-row lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[400px] no-scrollbar mb-8 pb-3 lg:pb-0">
                                     {categories.map(cat => (
-                                        <button key={cat} onClick={() => {setActiveCategory(cat); setCurrentPage(1);}} className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-left transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 text-slate-400 hover:text-white'}`}>{cat}</button>
+                                        <button 
+                                            key={cat} 
+                                            onClick={() => {setActiveCategory(cat); setCurrentPage(1);}} 
+                                            /* Mobile Scroll Fix: Added shrink-0 so buttons don't crush on phones */
+                                            className={`shrink-0 px-6 py-4 lg:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-left transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                                        >
+                                            {cat}
+                                        </button>
                                     ))}
                                 </div>
+                                
                                 <div className="pt-8 border-t border-slate-800">
                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-4">Sort Gallery</h3>
-                                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-[10px] font-bold outline-none focus:border-blue-500">
+                                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 lg:p-3 text-[10px] font-bold outline-none focus:border-blue-500 cursor-pointer">
                                         <option value="newest">Newest First</option>
                                         <option value="price-low">Price: Low to High</option>
                                         <option value="price-high">Price: High to Low</option>
@@ -140,6 +125,34 @@ const App = () => {
                                 </div>
                             </div>
                         </aside>
+
+                        {/* PRODUCT FEED (Now elegantly positioned on the right) */}
+                        <div className="flex-grow order-2 min-w-0">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-10">
+                                {currentItems.map(p => (
+                                    <div key={p.id} onClick={() => {setViewingProduct(p); setMainImage(p.images[0]);}} className="group flex flex-col bg-slate-900/40 rounded-[2.5rem] border border-slate-800/50 p-6 cursor-pointer hover:border-blue-600 transition-all shadow-xl hover:shadow-blue-900/20">
+                                        <div className="aspect-square bg-white rounded-3xl mb-6 p-8 flex items-center justify-center overflow-hidden relative shadow-inner">
+                                            <img src={p.images[0] || ''} className="max-h-full w-auto object-contain group-hover:scale-110 transition duration-700" />
+                                            {!p.in_stock && <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center font-black text-white italic text-[10px] uppercase tracking-[0.4em] backdrop-blur-sm">Sold Out</div>}
+                                        </div>
+                                        <div className="flex flex-col flex-grow">
+                                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">{p.category}</p>
+                                            <h4 className="text-lg font-black italic mb-3 uppercase line-clamp-2 group-hover:text-blue-400 transition-colors">{p.name}</h4>
+                                            <p className="text-2xl lg:text-3xl font-black text-white mt-auto">{p.price}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {/* PAGINATION BUTTONS */}
+                            {totalPages > 1 && (
+                                <div className="flex justify-center gap-4 mt-16 lg:mt-20">
+                                    <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="p-4 bg-slate-900 rounded-2xl border border-slate-800 disabled:opacity-20 hover:bg-slate-800 transition-colors"><i data-lucide="chevron-left"></i></button>
+                                    <span className="flex items-center font-black italic uppercase text-[10px] tracking-widest text-slate-500">Page {currentPage} of {totalPages}</span>
+                                    <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="p-4 bg-slate-900 rounded-2xl border border-slate-800 disabled:opacity-20 hover:bg-slate-800 transition-colors"><i data-lucide="chevron-right"></i></button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
