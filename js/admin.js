@@ -4,10 +4,11 @@ const SUPABASE_KEY = 'sb_publishable_t5Dro1BgG8sMUpQyMWiE0Q_BxjDTBrn';
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// 2. CLOUDINARY CONFIGURATION
 const CLOUD_NAME = "dcdh5wh8m"; 
 const UPLOAD_PRESET = "HAZZALEBLUE";
 
-// 2. SESSION ACCESS
+// 3. ACCESS CONTROL
 const getAdminAuth = () => sessionStorage.getItem('admin_active');
 
 window.onload = () => {
@@ -18,10 +19,10 @@ window.onload = () => {
     if (window.lucide) lucide.createIcons();
 };
 
-// 3. LOGIN LOGIC (Replacing GitHub PAT)
+// LOGIN LOGIC
 window.attemptLogin = () => {
     const key = document.getElementById('adminKey').value;
-    const SECRET_ACCESS_KEY = "HazzaleAdmin2026"; // Set your own private key here
+    const SECRET_ACCESS_KEY = "HazzaleAdmin2026"; // You can change this anytime
     
     if (key === SECRET_ACCESS_KEY) {
         sessionStorage.setItem('admin_active', 'true');
@@ -52,13 +53,13 @@ async function loadInventory() {
             <div class="bg-slate-900 p-5 rounded-[1.5rem] border border-slate-700 hover:border-blue-500 transition-all shadow-lg">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex gap-4">
-                        <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden">
-                            <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/150?text=Syncing'}" 
+                        <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-800">
+                            <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/150?text=No+Image'}" 
                                  class="w-full h-full object-contain">
                         </div>
                         <div>
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest">${p.category}</p>
-                            <h4 class="text-sm font-black italic uppercase text-white leading-tight mb-1">${p.name}</h4>
+                            <h4 class="text-sm font-black italic uppercase text-white leading-tight mb-1 truncate w-40">${p.name}</h4>
                             <p class="text-lg font-black text-white">${p.price}</p>
                         </div>
                     </div>
@@ -68,21 +69,21 @@ async function loadInventory() {
                     </div>
                 </div>
                 <div class="flex items-center justify-between pt-3 border-t border-slate-800">
-                    <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">DB_ID: ${p.id}</span>
-                    <span class="text-[9px] ${p.in_stock ? 'text-green-500' : 'text-red-500'} font-black italic uppercase">${p.in_stock ? '● Live' : '○ Sold Out'}</span>
+                    <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter italic">DB_REF: ${p.id}</span>
+                    <span class="text-[9px] ${p.in_stock ? 'text-green-500' : 'text-red-500'} font-black italic uppercase tracking-widest">${p.in_stock ? '● Live' : '○ Sold Out'}</span>
                 </div>
             </div>
         `).join('');
         lucide.createIcons();
     } catch (e) { 
-        list.innerHTML = `<div class="p-10 text-center text-red-500 font-black uppercase italic">Database Connection Error</div>`; 
+        list.innerHTML = `<div class="p-10 text-center text-red-500 font-black uppercase italic border border-red-900/50 rounded-2xl bg-red-500/5">Database Connection Error</div>`; 
     }
 }
 
-// 5. EDIT HANDLER (SMART PREFILL)
+// 5. EDIT HANDLER
 window.editProduct = async (id) => {
-    const { data: p } = await supabaseClient.from('products').select('*').eq('id', id).single();
-    if (!p) return;
+    const { data: p, error } = await supabaseClient.from('products').select('*').eq('id', id).single();
+    if (error || !p) return;
 
     document.getElementById('editId').value = p.id;
     document.getElementById('pName').value = p.name;
@@ -91,7 +92,7 @@ window.editProduct = async (id) => {
     document.getElementById('pStock').value = p.in_stock.toString();
     document.getElementById('pDetails').value = p.details;
     
-    document.getElementById('formTitle').innerText = "Update: " + p.name;
+    document.getElementById('formTitle').innerText = "Update Item";
     document.getElementById('editBadge').classList.remove('hidden');
     document.getElementById('cancelEdit').classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -99,27 +100,30 @@ window.editProduct = async (id) => {
 
 // 6. DELETE HANDLER (INSTANT)
 window.deleteProduct = async (id) => {
-    if (!confirm("Remove this SKU from the live database?")) return;
+    if (!confirm("Are you sure? This will remove the item from the live website immediately.")) return;
     const { error } = await supabaseClient.from('products').delete().eq('id', id);
-    if (!error) loadInventory();
+    if (!error) {
+        loadInventory(); 
+    } else {
+        alert("Delete failed. Check your Supabase RLS policies.");
+    }
 };
 
-// 7. FORM SUBMISSION (SMART IMAGE PRESERVATION)
+// 7. FORM SUBMISSION (SMART UPSERT)
 document.getElementById('adminForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     const editId = document.getElementById('editId').value;
     
     btn.disabled = true; 
-    btn.innerHTML = `<span class="animate-pulse">🚀 PROCESSING...</span>`;
+    btn.innerHTML = `<span class="animate-pulse italic">UPLOADING...</span>`;
 
     try {
         let imageUrls = [];
         const files = document.getElementById('pFiles').files;
 
-        // Upload only if new files selected
+        // Image Upload Logic
         if (files.length > 0) {
-            btn.innerHTML = `<span class="animate-pulse">📸 CLOUDINARY UPLOAD...</span>`;
             for (let file of files) {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -130,7 +134,7 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
             }
         }
 
-        // Fetch existing data for image preservation if editing
+        // Smart Image Preservation
         let finalImages = imageUrls;
         if (editId && imageUrls.length === 0) {
             const { data: existing } = await supabaseClient.from('products').select('images').eq('id', editId).single();
@@ -146,24 +150,20 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
             images: finalImages
         };
 
-        btn.innerHTML = `<span class="animate-pulse">💾 WRITING TO POSTGRES...</span>`;
-        
-        let result;
-        if (editId) {
-            result = await supabaseClient.from('products').update(productData).eq('id', editId);
-        } else {
-            result = await supabaseClient.from('products').insert([productData]);
-        }
+        if (editId) productData.id = parseInt(editId);
 
-        if (!result.error) {
+        // UPSERT Handles both New and Edit
+        const { error } = await supabaseClient.from('products').upsert(productData);
+
+        if (!error) {
             btn.classList.replace('bg-blue-600', 'bg-green-600');
-            btn.innerText = "✅ INSTANT SYNC SUCCESSFUL!";
+            btn.innerText = "✅ SYNCED TO DATABASE";
             setTimeout(() => location.reload(), 1000);
         } else {
-            throw result.error;
+            throw error;
         }
     } catch (err) { 
-        alert("Sync Error: " + err.message);
+        alert("Error: " + err.message);
         btn.disabled = false;
         btn.innerText = "RETRY SUBMISSION";
     }
