@@ -1,75 +1,50 @@
-// CONFIGURATION
+// 1. CONFIGURATION
+const SUPABASE_URL = 'https://fpgamsphgwyramtopbdl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_t5Dro1BgG8sMUpQyMWiE0Q_BxjDTBrn';
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const CLOUD_NAME = "dcdh5wh8m"; 
 const UPLOAD_PRESET = "HAZZALEBLUE";
-const REPO_OWNER = "Sid-arthh";
-const REPO_NAME = "hazzaleblue-site";
-const FILE_PATH = "data/products.json";
 
-// Helper: Get token from session memory
-const getToken = () => sessionStorage.getItem('admin_token');
+// 2. SESSION ACCESS
+const getAdminAuth = () => sessionStorage.getItem('admin_active');
 
 window.onload = () => {
-    if (getToken()) {
+    if (getAdminAuth()) {
         document.getElementById('loginOverlay').classList.add('hidden');
         loadInventory();
     }
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 };
 
-// LOGIN LOGIC
-window.attemptLogin = async () => {
+// 3. LOGIN LOGIC (Replacing GitHub PAT)
+window.attemptLogin = () => {
     const key = document.getElementById('adminKey').value;
-    const btn = document.getElementById('loginBtn');
-    if (!key) return;
+    const SECRET_ACCESS_KEY = "HazzaleAdmin2026"; // Set your own private key here
     
-    btn.disabled = true; 
-    btn.innerText = "VERIFYING...";
-
-    try {
-        const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-            headers: { "Authorization": `token ${key}` }
-        });
-        if (res.ok) {
-            sessionStorage.setItem('admin_token', key);
-            document.getElementById('loginOverlay').classList.add('hidden');
-            loadInventory();
-        } else { throw new Error(); }
-    } catch (e) {
+    if (key === SECRET_ACCESS_KEY) {
+        sessionStorage.setItem('admin_active', 'true');
+        document.getElementById('loginOverlay').classList.add('hidden');
+        loadInventory();
+    } else {
         document.getElementById('loginError').classList.remove('hidden');
-    } finally {
-        btn.disabled = false; 
-        btn.innerText = "Unlock Dashboard";
     }
 };
 
-// GITHUB UPDATE HANDLER
-async function updateGitHub(newContent, message, token) {
-    const getRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-        headers: { "Authorization": `token ${token}` }
-    });
-    const fileData = await getRes.json();
-    return fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-        method: 'PUT',
-        headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-            message: message,
-            content: btoa(unescape(encodeURIComponent(JSON.stringify(newContent, null, 2)))),
-            sha: fileData.sha
-        })
-    });
-}
-
-// LOAD INVENTORY WITH CACHE BUSTING
-// Replace your loadInventory in js/admin.js
+// 4. LOAD INVENTORY (INSTANT FETCH)
 async function loadInventory() {
     const list = document.getElementById('inventoryList');
     const totalCountLabel = document.getElementById('totalCount');
-    list.innerHTML = `<div class="p-10 text-center animate-pulse text-blue-500 font-black uppercase">SYNCING DATABASE...</div>`;
+    list.innerHTML = `<div class="p-10 text-center animate-pulse text-blue-500 font-black uppercase tracking-widest">🔌 Connecting to Live DB...</div>`;
     
     try {
-        // Use a high-resolution timestamp to bypass GitHub's cache
-        const res = await fetch(`data/products.json?v=${new Date().getTime()}`);
-        const products = await res.json();
+        const { data: products, error } = await supabaseClient
+            .from('products')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (error) throw error;
         
         if (totalCountLabel) totalCountLabel.innerText = products.length;
 
@@ -78,7 +53,7 @@ async function loadInventory() {
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex gap-4">
                         <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden">
-                            <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/150?text=Wait'}" 
+                            <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/150?text=Syncing'}" 
                                  class="w-full h-full object-contain">
                         </div>
                         <div>
@@ -93,109 +68,107 @@ async function loadInventory() {
                     </div>
                 </div>
                 <div class="flex items-center justify-between pt-3 border-t border-slate-800">
-                    <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">ID: ${p.id}</span>
-                    <span class="text-[9px] ${p.inStock ? 'text-green-500' : 'text-red-500'} font-black italic uppercase">${p.inStock ? '● Active' : '○ Sold Out'}</span>
+                    <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">DB_ID: ${p.id}</span>
+                    <span class="text-[9px] ${p.in_stock ? 'text-green-500' : 'text-red-500'} font-black italic uppercase">${p.in_stock ? '● Live' : '○ Sold Out'}</span>
                 </div>
             </div>
-        `).reverse().join('');
+        `).join('');
         lucide.createIcons();
     } catch (e) { 
-        list.innerHTML = `<div class="p-10 text-center text-slate-600 font-black uppercase">Data Pending Sync...</div>`; 
+        list.innerHTML = `<div class="p-10 text-center text-red-500 font-black uppercase italic">Database Connection Error</div>`; 
     }
 }
 
-// EDIT HANDLER
+// 5. EDIT HANDLER (SMART PREFILL)
 window.editProduct = async (id) => {
-    const res = await fetch('data/products.json?v=' + Date.now());
-    const products = await res.json();
-    const p = products.find(item => item.id === id);
+    const { data: p } = await supabaseClient.from('products').select('*').eq('id', id).single();
+    if (!p) return;
+
     document.getElementById('editId').value = p.id;
     document.getElementById('pName').value = p.name;
     document.getElementById('pPrice').value = p.price;
     document.getElementById('pCat').value = p.category;
-    document.getElementById('pStock').value = p.inStock.toString();
+    document.getElementById('pStock').value = p.in_stock.toString();
     document.getElementById('pDetails').value = p.details;
-    document.getElementById('formTitle').innerText = "Update Product";
+    
+    document.getElementById('formTitle').innerText = "Update: " + p.name;
     document.getElementById('editBadge').classList.remove('hidden');
     document.getElementById('cancelEdit').classList.remove('hidden');
-    window.scrollTo(0,0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// DELETE HANDLER
+// 6. DELETE HANDLER (INSTANT)
 window.deleteProduct = async (id) => {
-    const token = getToken();
-    if (!token || !confirm("Delete item permanently?")) return;
-    const res = await fetch('data/products.json?v=' + Date.now());
-    const products = await res.json();
-    const updated = products.filter(p => p.id !== id);
-    if ((await updateGitHub(updated, "Deleted Item", token)).ok) { loadInventory(); }
+    if (!confirm("Remove this SKU from the live database?")) return;
+    const { error } = await supabaseClient.from('products').delete().eq('id', id);
+    if (!error) loadInventory();
 };
 
-// FORM SUBMISSION WITH STATUS UPDATES
+// 7. FORM SUBMISSION (SMART IMAGE PRESERVATION)
 document.getElementById('adminForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const token = getToken();
     const btn = document.getElementById('submitBtn');
     const editId = document.getElementById('editId').value;
     
-    // VISUAL FEEDBACK
     btn.disabled = true; 
-    btn.innerHTML = `<span class="animate-pulse">📤 UPLOADING IMAGES...</span>`;
+    btn.innerHTML = `<span class="animate-pulse">🚀 PROCESSING...</span>`;
 
     try {
-        const res = await fetch('data/products.json?v=' + Date.now());
-        const products = await res.json();
         let imageUrls = [];
         const files = document.getElementById('pFiles').files;
 
-        // CLOUDINARY UPLOAD
+        // Upload only if new files selected
         if (files.length > 0) {
+            btn.innerHTML = `<span class="animate-pulse">📸 CLOUDINARY UPLOAD...</span>`;
             for (let file of files) {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('upload_preset', UPLOAD_PRESET);
-                // Ensure compression happens at upload
-                formData.append('transformation', 'w_1000,c_limit,q_auto:good,f_auto');
-                
-                const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { 
-                    method: 'POST', 
-                    body: formData 
-                });
+                const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: formData });
                 const cloudData = await cloudRes.json();
                 if (cloudData.secure_url) imageUrls.push(cloudData.secure_url);
             }
         }
 
+        // Fetch existing data for image preservation if editing
+        let finalImages = imageUrls;
+        if (editId && imageUrls.length === 0) {
+            const { data: existing } = await supabaseClient.from('products').select('images').eq('id', editId).single();
+            finalImages = existing.images;
+        }
+
         const productData = {
-            id: editId ? parseInt(editId) : Date.now(),
             name: document.getElementById('pName').value,
             price: document.getElementById('pPrice').value,
             category: document.getElementById('pCat').value,
-            inStock: document.getElementById('pStock').value === "true",
+            in_stock: document.getElementById('pStock').value === "true",
             details: document.getElementById('pDetails').value,
-            images: imageUrls.length > 0 ? imageUrls : (products.find(p => p.id == editId)?.images || [])
+            images: finalImages
         };
 
-        btn.innerHTML = `<span class="animate-pulse">💾 SAVING TO DATABASE...</span>`;
+        btn.innerHTML = `<span class="animate-pulse">💾 WRITING TO POSTGRES...</span>`;
         
-        const updatedList = editId ? products.map(p => p.id == editId ? productData : p) : [...products, productData];
-        
-        const ghRes = await updateGitHub(updatedList, "Update Item", token);
-        
-        if (ghRes.ok) {
-            btn.classList.replace('bg-blue-600', 'bg-green-600');
-            btn.innerText = "✅ SUCCESS! REFRESHING...";
-            setTimeout(() => location.reload(), 1500);
+        let result;
+        if (editId) {
+            result = await supabaseClient.from('products').update(productData).eq('id', editId);
         } else {
-            throw new Error("GitHub Save Failed");
+            result = await supabaseClient.from('products').insert([productData]);
+        }
+
+        if (!result.error) {
+            btn.classList.replace('bg-blue-600', 'bg-green-600');
+            btn.innerText = "✅ INSTANT SYNC SUCCESSFUL!";
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            throw result.error;
         }
     } catch (err) { 
-        alert("Error: " + err.message);
+        alert("Sync Error: " + err.message);
         btn.disabled = false;
-        btn.innerText = "SUBMIT CHANGES";
+        btn.innerText = "RETRY SUBMISSION";
     }
 });
 
-// LOGOUT
-window.logout = () => { sessionStorage.removeItem('admin_token'); location.reload(); };
-document.getElementById('refreshBtn').addEventListener('click', loadInventory);
+// 8. HELPERS
+window.logout = () => { sessionStorage.removeItem('admin_active'); location.reload(); };
+document.getElementById('cancelEdit').onclick = () => location.reload();
