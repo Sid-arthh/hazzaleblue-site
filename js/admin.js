@@ -36,22 +36,25 @@ async function loadInventory() {
         const { data: products, error } = await supabaseClient.from('products').select('*').order('id', { ascending: false });
         if (error) throw error;
 
+        // Display exact SKU count
+        document.getElementById('totalCount').innerText = products.length;
+
         list.innerHTML = products.map(p => {
             const displayImg = (p.images && p.images[0]) ? p.images[0] : 'https://via.placeholder.com/150?text=No+Image';
             return `
                 <div class="bg-slate-900 p-5 rounded-[1.5rem] border border-slate-700 hover:border-blue-500 transition-all shadow-lg">
                     <div class="flex items-start justify-between mb-3">
                         <div class="flex gap-4">
-                            <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-800">
+                            <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-800 shrink-0">
                                 <img src="${displayImg}" class="w-full h-full object-contain">
                             </div>
-                            <div>
+                            <div class="min-w-0">
                                 <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest">${p.category}</p>
-                                <h4 class="text-sm font-black italic uppercase text-white leading-tight mb-1 truncate w-40">${p.name}</h4>
+                                <h4 class="text-sm font-black italic uppercase text-white leading-tight mb-1 truncate w-32 sm:w-40">${p.name}</h4>
                                 <p class="text-lg font-black text-white">${p.price}</p>
                             </div>
                         </div>
-                        <div class="flex flex-col gap-2">
+                        <div class="flex flex-col gap-2 shrink-0">
                             <button onclick="editProduct(${p.id})" class="bg-slate-800 p-2 rounded-lg text-blue-400 hover:bg-blue-500 hover:text-white transition"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
                             <button onclick="deleteProduct(${p.id})" class="bg-slate-800 p-2 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </div>
@@ -83,7 +86,7 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
                 const cloudData = await cloudRes.json();
                 return cloudData.secure_url;
             });
-            imageUrls = await Promise.all(uploadPromises); // Ensures all images save
+            imageUrls = await Promise.all(uploadPromises); 
         }
 
         let finalImages = imageUrls;
@@ -92,9 +95,10 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
             finalImages = existing ? existing.images : [];
         }
 
+        // PRICE BUG FIXED HERE: Checking pPrice instead of pName for the ₹ symbol
         const productData = {
             name: document.getElementById('pName').value,
-            price: document.getElementById('pName').value.includes('₹') ? document.getElementById('pPrice').value : `₹${document.getElementById('pPrice').value}`,
+            price: document.getElementById('pPrice').value.includes('₹') ? document.getElementById('pPrice').value : `₹${document.getElementById('pPrice').value}`,
             category: document.getElementById('pCat').value,
             in_stock: document.getElementById('pStock').value === "true",
             details: document.getElementById('pDetails').value,
@@ -119,18 +123,33 @@ document.getElementById('adminForm').addEventListener('submit', async (e) => {
 window.editProduct = async (id) => {
     const { data: p, error } = await supabaseClient.from('products').select('*').eq('id', id).single();
     if (error || !p) return;
+    
     document.getElementById('editId').value = p.id;
     document.getElementById('pName').value = p.name;
     document.getElementById('pPrice').value = p.price.replace('₹', '');
     document.getElementById('pCat').value = p.category;
     document.getElementById('pStock').value = p.in_stock.toString();
     document.getElementById('pDetails').value = p.details;
+    
     document.getElementById('formTitle').innerText = "Update Item";
+    document.getElementById('editBadge').classList.remove('hidden');
+    document.getElementById('cancelEdit').classList.remove('hidden');
+    document.getElementById('submitBtn').innerText = "Update Product";
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
+document.getElementById('cancelEdit').addEventListener('click', () => {
+    document.getElementById('adminForm').reset();
+    document.getElementById('editId').value = '';
+    document.getElementById('formTitle').innerText = "Add New Item";
+    document.getElementById('editBadge').classList.add('hidden');
+    document.getElementById('cancelEdit').classList.add('hidden');
+    document.getElementById('submitBtn').innerText = "Submit Changes";
+});
+
 window.deleteProduct = async (id) => {
-    if (!confirm("Delete permanently?")) return;
+    if (!confirm("Delete permanently? This cannot be undone.")) return;
     await supabaseClient.from('products').delete().eq('id', id);
     loadInventory();
 };
